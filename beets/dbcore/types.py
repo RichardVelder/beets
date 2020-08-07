@@ -207,6 +207,9 @@ class String(Type):
     sql = u'TEXT'
     query = query.SubstringQuery
 
+class Json(String):
+    """JSON type, same as string
+    """
 
 class Boolean(Type):
     """A boolean type.
@@ -231,3 +234,4 @@ FLOAT = Float()
 NULL_FLOAT = NullFloat()
 STRING = String()
 BOOLEAN = Boolean()
+JSON = Json()

@@ -28,6 +28,7 @@ import beets
 from beets import util
 from beets import config
 import six
+import json
 
 VARIOUS_ARTISTS_ID = '89ad4ac3-39f7-470e-963a-56509c546377'
 
@@ -137,6 +138,12 @@ def _preferred_release_event(release):
     return release.get('country'), release.get('date')
 
 
+def j(item):
+    """Dump item to JSON
+    """
+    return json.dumps(item, indent=0, separators=(',', ':'))
+
+
 def _flatten_artist_credit(credit):
     """Given a list representing an ``artist-credit`` block, flatten the
     data into a triple of joined artist name strings: canonical, sort, and
@@ -145,12 +152,12 @@ def _flatten_artist_credit(credit):
     artist_parts = []
     artist_sort_parts = []
     artist_credit_parts = []
+    artist_join_phrases = []
+
     for el in credit:
         if isinstance(el, six.string_types):
             # Join phrase.
-            artist_parts.append(el)
-            artist_credit_parts.append(el)
-            artist_sort_parts.append(el)
+            artist_join_phrases.append(el)
 
         else:
             alias = _preferred_alias(el['artist'].get('alias-list', ()))
@@ -177,9 +184,10 @@ def _flatten_artist_credit(credit):
                 artist_credit_parts.append(cur_artist_name)
 
     return (
-        ''.join(artist_parts),
-        ''.join(artist_sort_parts),
-        ''.join(artist_credit_parts),
+        j(artist_parts),
+        j(artist_sort_parts),
+        j(artist_credit_parts),
+        j(artist_join_phrases),
     )
 
 
@@ -205,7 +213,7 @@ def track_info(recording, index=None, medium=None, medium_index=None,
 
     if recording.get('artist-credit'):
         # Get the artist names.
-        info.artist, info.artist_sort, info.artist_credit = \
+        info.artist, info.artist_sort, info.artist_credit, info.artist_join_phrases = \
             _flatten_artist_credit(recording['artist-credit'])
 
         # Get the ID and sort name of the first artist.
@@ -237,10 +245,10 @@ def track_info(recording, index=None, medium=None, medium_index=None,
                     composer_sort.append(
                         artist_relation['artist']['sort-name'])
     if lyricist:
-        info.lyricist = u', '.join(lyricist)
+        info.lyricist = j(lyricist)
     if composer:
-        info.composer = u', '.join(composer)
-        info.composer_sort = u', '.join(composer_sort)
+        info.composer = j(composer)
+        info.composer_sort = j(composer_sort)
 
     arranger = []
     for artist_relation in recording.get('artist-relation-list', ()):
@@ -249,7 +257,7 @@ def track_info(recording, index=None, medium=None, medium_index=None,
             if type == 'arranger':
                 arranger.append(artist_relation['artist']['name'])
     if arranger:
-        info.arranger = u', '.join(arranger)
+        info.arranger = j(arranger)
 
     info.decode()
     return info
@@ -280,7 +288,7 @@ def album_info(release):
     AlbumInfo object containing the interesting data about that release.
     """
     # Get artist name using join phrases.
-    artist_name, artist_sort_name, artist_credit_name = \
+    artist_name, artist_sort_name, artist_credit_name, artist_credit_join_phrases = \
         _flatten_artist_credit(release['artist-credit'])
 
     # Basic info.
@@ -332,7 +340,7 @@ def album_info(release):
                 ti.title = track['title']
             if track.get('artist-credit'):
                 # Get the artist names.
-                ti.artist, ti.artist_sort, ti.artist_credit = \
+                ti.artist, ti.artist_sort, ti.artist_credit, ti.artist_join_phrases = \
                     _flatten_artist_credit(track['artist-credit'])
                 ti.artist_id = track['artist-credit'][0]['artist']['id']
             if track.get('length'):
