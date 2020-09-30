@@ -26,6 +26,7 @@ from xml.etree import ElementTree
 from datetime import datetime, date
 from beets.plugins import BeetsPlugin
 from beets import ui
+from beets import util
 import mediafile
 from beetsplug.info import library_data, tag_data
 
@@ -135,6 +136,10 @@ class ExportPlugin(BeetsPlugin):
             except (mediafile.UnreadableFileError, IOError) as ex:
                 self._log.error(u'cannot read file: {0}', ex)
                 continue
+
+            for key, value in data.items():
+                if isinstance(value, bytes):
+                    data[key] = util.displayable_path(value)
 
             items += [data]
 
