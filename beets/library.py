@@ -426,12 +426,15 @@ class FormattedItemMapping(dbcore.db.FormattedMapping):
         # `artist` and `albumartist` fields fall back to one another.
         # This is helpful in path formats when the album artist is unset
         # on as-is imports.
-        if key == 'artist' and not value:
-            return self._get('albumartist')
-        elif key == 'albumartist' and not value:
-            return self._get('artist')
-        else:
-            return value
+        try:
+            if key == 'artist' and not value:
+                return self._get('albumartist')
+            elif key == 'albumartist' and not value:
+                return self._get('artist')
+        except KeyError:
+            pass
+
+        return value
 
     def __iter__(self):
         return iter(self.all_keys)
