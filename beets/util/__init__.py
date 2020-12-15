@@ -1108,3 +1108,31 @@ def lazy_property(func):
         return value
 
     return wrapper
+
+
+def expand_key_globs(included_keys, all_keys_cb):
+    """Expand '*' placeholders in a list of key names.
+
+    The list of all possible keys is obtained by calling `all_keys_cb()`.
+    This is only called if `included_keys` contains globs.
+
+    """
+    glob_keys = set(k for k in included_keys if '*' in k)
+    keys = set(k for k in included_keys if k not in glob_keys)
+
+    if glob_keys:
+        all_keys = all_keys_cb()
+
+        matchers = []
+        for key in glob_keys:
+            pattern = re.escape(key).replace(r'\*', '.*') + '$'
+            matchers.append(re.compile(pattern))
+
+        def filter_(keys):
+            for key in keys:
+                if any([m.match(key) for m in matchers]):
+                    yield key
+
+        keys.update(filter_(all_keys))
+
+    return keys

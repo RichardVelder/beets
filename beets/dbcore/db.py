@@ -26,7 +26,9 @@ import sqlite3
 import contextlib
 
 import beets
+from beets import util
 from beets.util import functemplate
+from beets.util import lazy_property
 from beets.util import py3_path
 from beets.dbcore import types
 from .query import MatchQuery, NullSort, TrueQuery
@@ -52,26 +54,38 @@ class FormattedMapping(Mapping):
     The accessor `mapping[key]` returns the formatted version of
     `model[key]` as a unicode string.
 
+    The `included_keys` parameter allows filtering the fields that are
+    returned. The key names can include '*' glob patterns. By default all
+    fields are returned. Limiting to specific keys can avoid expensive
+    per-item database queries.
+
     If `for_path` is true, all path separators in the formatted values
     are replaced.
     """
 
-    def __init__(self, model, for_path=False):
+    def __init__(self, model, included_keys=None, for_path=False):
+        self.included_keys = included_keys or '*'
         self.for_path = for_path
         self.model = model
-        self.model_keys = model.keys(True)
+
+    @lazy_property
+    def all_keys(self):
+        def all_keys_cb():
+            # This is deferred to a callback as it may be expensive.
+            return self.model.keys(True)
+        return util.expand_key_globs(self.included_keys, all_keys_cb)
 
     def __getitem__(self, key):
-        if key in self.model_keys:
+        if key in self.all_keys:
             return self._get_formatted(self.model, key)
         else:
             raise KeyError(key)
 
     def __iter__(self):
-        return iter(self.model_keys)
+        return iter(self.all_keys)
 
     def __len__(self):
-        return len(self.model_keys)
+        return len(self.all_keys)
 
     def get(self, key, default=None):
         if default is None:
@@ -590,11 +604,11 @@ class Model(object):
 
     _formatter = FormattedMapping
 
-    def formatted(self, for_path=False):
+    def formatted(self, included_keys=None, for_path=False):
         """Get a mapping containing all values on this object formatted
         as human-readable unicode strings.
         """
-        return self._formatter(self, for_path)
+        return self._formatter(self, included_keys, for_path)
 
     def evaluate_template(self, template, for_path=False):
         """Evaluate a template (a string or a `Template` object) using
@@ -604,7 +618,7 @@ class Model(object):
         # Perform substitution.
         if isinstance(template, six.string_types):
             template = functemplate.template(template)
-        return template.substitute(self.formatted(for_path),
+        return template.substitute(self.formatted(for_path=for_path),
                                    self._template_funcs())
 
     # Parsing.

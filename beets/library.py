@@ -374,23 +374,31 @@ class FormattedItemMapping(dbcore.db.FormattedMapping):
     Album-level fields take precedence if `for_path` is true.
     """
 
-    def __init__(self, item, for_path=False):
-        super(FormattedItemMapping, self).__init__(item, for_path)
+    def __init__(self, item, included_keys=None, for_path=False):
+        super(FormattedItemMapping, self).__init__(item, included_keys,
+                                                   for_path)
         self.item = item
 
     @lazy_property
     def all_keys(self):
-        return set(self.model_keys).union(self.album_keys)
+        return self.model_keys.union(self.album_keys)
+
+    @lazy_property
+    def model_keys(self):
+        return super(FormattedItemMapping, self).all_keys
 
     @lazy_property
     def album_keys(self):
-        album_keys = []
-        if self.album:
-            for key in self.album.keys(True):
-                if key in Album.item_keys \
-                        or key not in self.item._fields.keys():
-                    album_keys.append(key)
-        return album_keys
+        def album_keys_cb():
+            # This is deferred to a callback as it may be expensive.
+            album_keys = []
+            if self.album:
+                for key in self.album.keys(True):
+                    if key in Album.item_keys \
+                            or key not in self.item._fields.keys():
+                        album_keys.append(key)
+            return album_keys
+        return util.expand_key_globs(self.included_keys, album_keys_cb)
 
     @lazy_property
     def album(self):
@@ -1630,7 +1638,7 @@ class DefaultTemplateFunctions(object):
             return res
 
         # Flatten disambiguation value into a string.
-        disam_value = album.formatted(True).get(disambiguator)
+        disam_value = album.formatted(for_path=True).get(disambiguator)
 
         # Return empty string if disambiguator is empty.
         if disam_value:

@@ -35,6 +35,8 @@ New features:
   which allows for the ability to export in json, jsonlines, csv and xml.
   Thanks to :user:`austinmm`.
   :bug:`3402`
+* :doc:`/plugins/export`: big speedups when `--include-keys` option is used
+  Thanks to :user:`ssssam`.
 * :doc:`/plugins/unimported`: lets you find untracked files in your library directory.
 * We now fetch information about `works`_ from MusicBrainz.
   MusicBrainz matches provide the fields ``work`` (the title), ``mb_workid``
